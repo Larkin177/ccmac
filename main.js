@@ -57,6 +57,20 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+  // 右键菜单（剪切/复制/粘贴）
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    if (params.selectionText || params.isEditable) {
+      const menu = Menu.buildFromTemplate([
+        { label: '剪切', role: 'cut', enabled: params.selectionText.length > 0 },
+        { label: '复制', role: 'copy', enabled: params.selectionText.length > 0 },
+        { label: '粘贴', role: 'paste' },
+        { type: 'separator' },
+        { label: '全选', role: 'selectAll' },
+      ]);
+      menu.popup();
+    }
+  });
+
   if (process.env.DEV) {
     mainWindow.webContents.openDevTools();
   }
