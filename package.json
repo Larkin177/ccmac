@@ -1,0 +1,41 @@
+{
+  "name": "cc-installer-mac",
+  "version": "1.0.0",
+  "description": "CC-Installer for macOS",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:arm64": "electron-builder --mac --arm64",
+    "build:x64": "electron-builder --mac --x64",
+    "build:universal": "electron-builder --mac --universal"
+  },
+  "build": {
+    "appId": "com.cc-installer.mac",
+    "productName": "CC-Installer",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.png",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "afterPack": "scripts/after-pack.js",
+    "extraResources": [
+      "public-key.js",
+      "cc-relay.js",
+      {
+        "from": "../guides",
+        "to": "guides"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

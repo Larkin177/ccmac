@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8788">
+  <title>CC-Installer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-brand">
+        <img src="logo.png" alt="CC-Installer" class="logo-img">
+        <div>
+          <h1>CC-Installer</h1>
+          <p class="header-subtitle">Claude Code & Codex CLI 一键安装工具</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============ Screen 1: Authorization ============ -->
+    <section id="screen-auth" class="screen active">
+      <div class="card">
+        <div class="card-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2>输入授权码</h2>
+        <p class="card-desc">请填入购买后获得的授权码以激活安装工具</p>
+
+        <div class="input-group">
+          <input type="text" id="authCodeInput"
+            placeholder="AIC-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            class="input-code"
+            autocomplete="off"
+            spellcheck="false">
+          <button id="btnVerify" class="btn btn-primary" onclick="verifyCode()">
+            验证授权
+          </button>
+        </div>
+        <div id="authError" class="error-msg"></div>
+        <div id="authSuccess" class="success-msg"></div>
+      </div>
+
+      <div class="footer-text">
+        <p>购买授权码请联系开发者 · 授权码激活后开始安装</p>
+      </div>
+    </section>
+
+    <!-- ============ Screen 2: Management ============ -->
+    <section id="screen-manage" class="screen">
+      <div class="manage-header">
+        <h2>环境检测完成</h2>
+        <p id="manageStatusText">正在检测已安装的工具...</p>
+      </div>
+
+      <div class="tool-grid">
+        <div class="tool-card selected" data-manage-tool="claude-code" style="cursor:default">
+          <div class="tool-card-header">
+            <div class="tool-name">Claude Code</div>
+            <span id="badgeClaude" class="status-badge missing">检测中</span>
+          </div>
+          <div class="tool-card-body" style="min-height:40px">
+            <p id="descClaude">Anthropic 官方 AI 编码助手</p>
+          </div>
+          <div class="tool-actions" id="actionsClaude">
+            <button class="btn btn-success hidden" id="btnLaunchClaudeMgmt" onclick="launchTool('claude')">▶ 打开</button>
+            <button class="btn btn-danger hidden" id="btnUninstallClaude" onclick="uninstallTool('claude-code')">🗑 卸载</button>
+            <button class="btn btn-primary hidden" id="btnInstallClaude" onclick="goToInstall('claude-code')">+ 安装</button>
+          </div>
+        </div>
+
+        <div class="tool-card selected" data-manage-tool="codex-cli" style="cursor:default">
+          <div class="tool-card-header">
+            <div class="tool-name">Codex CLI</div>
+            <span id="badgeCodex" class="status-badge missing">检测中</span>
+          </div>
+          <div class="tool-card-body" style="min-height:40px">
+            <p id="descCodex">OpenAI 官方 AI 编码助手</p>
+          </div>
+          <div class="tool-actions" id="actionsCodex">
+            <button class="btn btn-success hidden" id="btnLaunchCodexMgmt" onclick="launchTool('codex')">▶ 打开</button>
+            <button class="btn btn-danger hidden" id="btnUninstallCodex" onclick="uninstallTool('codex-cli')">🗑 卸载</button>
+            <button class="btn btn-primary hidden" id="btnInstallCodex" onclick="goToInstall('codex-cli')">+ 安装</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Startup hints -->
+      <div class="startup-hints">
+        <div class="hint-title">💡 启动方式</div>
+        <div class="hint-row">
+          <span class="hint-key">Cmd</span><span class="hint-plus">+</span><span class="hint-key">Space</span>
+          <span class="hint-arrow">→</span>
+          <code>Terminal</code>
+          <span class="hint-arrow">→</span>
+          <code>claude</code>
+          <span class="hint-desc">启动 Claude Code</span>
+        </div>
+        <div class="hint-row">
+          <span class="hint-key">Cmd</span><span class="hint-plus">+</span><span class="hint-key">Space</span>
+          <span class="hint-arrow">→</span>
+          <code>Terminal</code>
+          <span class="hint-arrow">→</span>
+          <code>codex</code>
+          <span class="hint-desc">启动 Codex CLI</span>
+        </div>
+      </div>
+
+      <div class="manage-relay-status hidden" id="relayStatusPanel">
+        <span id="relayStatusText">检查 relay 状态...</span>
+        <button class="btn btn-small btn-outline hidden" id="btnStartRelay" onclick="startRelay()" style="margin-left:12px;">▶ 启动 Relay</button>
+      </div>
+
+      <div class="manage-footer">
+        <button class="btn btn-secondary" onclick="backToAuth()">重新授权</button>
+      </div>
+    </section>
+
+    <!-- ============ Screen 3: Tool Selection ============ -->
+    <section id="screen-tool-select" class="screen">
+      <div class="card">
+        <h2>选择要安装的工具</h2>
+        <p class="card-desc">选择您想要安装的 AI 编码助手，可以只选一个，也可以两个都选</p>
+
+        <div class="card-scroll">
+          <div class="tool-grid">
+            <div class="tool-card selected" data-tool="claude-code" onclick="toggleTool('claude-code')">
+              <div class="tool-card-header">
+                <div class="tool-checkbox">&#10003;</div>
+                <div class="tool-name">Claude Code</div>
+              </div>
+              <div class="tool-card-body">
+                <p>Anthropic 官方 AI 编码助手</p>
+                <ul>
+                  <li>直接在终端中和 Claude 对话</li>
+                  <li>帮你写代码、改代码、查问题</li>
+                  <li>自动管理 Git 操作</li>
+                </ul>
+              </div>
+              <div class="tool-card-footer">npm install -g @anthropic-ai/claude-code</div>
+            </div>
+
+            <div class="tool-card selected" data-tool="codex-cli" onclick="toggleTool('codex-cli')">
+              <div class="tool-card-header">
+                <div class="tool-checkbox">&#10003;</div>
+                <div class="tool-name">Codex CLI</div>
+              </div>
+              <div class="tool-card-body">
+                <p>OpenAI 官方 AI 编码助手</p>
+                <ul>
+                  <li>直接在终端中和 GPT 对话</li>
+                  <li>帮你写代码、改代码、查问题</li>
+                  <li>支持多种 AI 模型切换</li>
+                </ul>
+              </div>
+              <div class="tool-card-footer">npm install -g @openai/codex</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="backToAuth()">返回</button>
+          <button id="btnToolNext" class="btn btn-primary" onclick="showScreen('screen-api-keys')">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Screen 3: API Key Collection ============ -->
+    <section id="screen-api-keys" class="screen">
+      <div class="card">
+        <h2>配置 API 密钥</h2>
+        <p class="card-desc">填入你要使用的大模型 API 密钥，留空则会跳过</p>
+
+        <div class="card-scroll">
+          <div class="api-key-columns">
+            <div class="api-key-column api-key-column-left">
+              <h3 class="column-title">DeepSeek</h3>
+              <div class="api-key-list">
+                <div class="api-key-row">
+                  <div class="api-key-header">
+                    <span class="api-key-name">DeepSeek (深度求索)</span>
+                    <span class="api-key-env">DEEPSEEK_API_KEY</span>
+                    <button class="btn btn-small btn-outline" onclick="window.api.openExternal('https://platform.deepseek.com/api_keys')">获取密钥</button>
+                  </div>
+                  <div class="api-key-input-row">
+                    <input type="password" class="api-key-input" data-provider="deepseek" placeholder="在此粘贴 DeepSeek API 密钥..." autocomplete="off">
+                  </div>
+                  <div class="api-steps">
+                    <div class="api-steps-content">
+                      <div class="api-steps-title">📖 如何获取 DeepSeek API 密钥？</div>
+                      <ol>
+                        <li>访问 <a href="#" onclick="window.api.openExternal('https://platform.deepseek.com')">platform.deepseek.com</a> 并登录（需注册账号）</li>
+                        <li>注册后进入「API Keys」页面</li>
+                        <li>点击「Create API Key」创建新密钥</li>
+                        <li>复制密钥并粘贴到上方输入框中</li>
+                        <li>首次充值可选择自定义充值 1 元体验，用量很少，普通开发能用很久</li>
+                        <li style="color:#ef4444;font-weight:700;list-style:none;margin-top:6px;">* 本处支付费用为支付 DeepSeek 的 token 服务费用，并非支付给本工具开发者！</li>
+                        <li style="color:#ef4444;font-weight:700;list-style:none;">* 后续使用，请进入官网查看 API 用量，充值费用使用完后本地将无法访问其 API！</li>
+                      </ol>
+                    </div>
+                    <button class="btn btn-small btn-outline" onclick="openGuide('deepseek-api')">📗 详细文档（图文）</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="api-key-column api-key-column-right">
+              <h3 class="column-title">自用中转 API</h3>
+              <div id="customApiSection" class="custom-api-section">
+                <div class="form-row">
+                  <label>名称</label>
+                  <input type="text" id="customApiName" class="form-input" placeholder="如：我的中转站">
+                </div>
+                <div class="form-row">
+                  <label>API 地址</label>
+                  <input type="text" id="customApiEndpoint" class="form-input" placeholder="https://api.example.com/v1/chat/completions">
+                </div>
+                <div class="form-row">
+                  <label>API 密钥</label>
+                  <input type="password" id="customApiKey" class="form-input" placeholder="sk-..." autocomplete="off">
+                </div>
+                <div class="form-row">
+                  <label>模型</label>
+                  <input type="text" id="customApiModel" class="form-input" placeholder="如：gpt-4o-mini">
+                </div>
+                <div class="form-row">
+                  <label>环境变量</label>
+                  <input type="text" id="customApiEnvKey" class="form-input" value="CUSTOM_API_KEY" placeholder="CUSTOM_API_KEY">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="apiKeyError" class="error-msg" style="margin-bottom:10px;text-align:center;"></div>
+
+          <div class="option-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chkMirror" checked>
+              <span>使用国内镜像源（中国大陆网络推荐）</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="showScreen('screen-tool-select')">上一步</button>
+          <button id="btnInstallStart" class="btn btn-primary" onclick="startInstall()">开始安装</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Screen 4: Installation ============ -->
+    <section id="screen-install" class="screen">
+      <div class="card">
+        <h2>正在安装</h2>
+        <p class="card-desc" id="installStatus">准备中...</p>
+
+        <div class="install-scroll-area">
+          <!-- Progress Bar -->
+          <div class="progress-bar">
+            <div class="progress-track">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-label">
+              <span id="progressStep">0</span>/<span id="progressTotal">0</span>
+              <span id="progressLabel"></span>
+            </div>
+          </div>
+
+          <!-- Step indicators -->
+          <div class="steps" id="stepIndicators"></div>
+
+          <!-- API test results (shown during step 6) -->
+          <div id="apiTestResults" class="test-results" style="display:none;">
+            <div class="test-results-header">&#128274; API 连接测试</div>
+            <div id="testResultsBody" class="test-results-body"></div>
+          </div>
+
+          <!-- Log console -->
+          <div class="log-console">
+            <div class="log-header">
+              <span>安装日志</span>
+              <button class="log-clear" onclick="clearLog()">清空</button>
+            </div>
+            <div class="log-body" id="logBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-group" style="margin-top: 12px;">
+        <button class="btn btn-primary hidden" id="btnInstallNext" onclick="showScreen('screen-complete')">下一步</button>
+        <button class="btn btn-secondary hidden" id="btnRetry" onclick="restartInstall()">重新安装</button>
+      </div>
+    </section>
+
+    <!-- ============ Screen 5: Complete ============ -->
+    <section id="screen-complete" class="screen">
+      <div class="card complete-card">
+        <div class="card-scroll">
+          <div class="complete-icon success-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <h2>安装成功</h2>
+          <p class="card-desc">所有组件已部署完成，开始使用吧</p>
+
+          <!-- Launch buttons -->
+          <div class="launch-section" id="launchSection">
+            <h3>&#128640; 启动工具</h3>
+            <div class="launch-buttons">
+              <button class="btn btn-launch" id="btnLaunchClaude" onclick="launchTool('claude')" style="display:none">
+                &#9654; 启动 Claude Code
+              </button>
+              <button class="btn btn-launch" id="btnLaunchCodex" onclick="launchTool('codex')" style="display:none">
+                &#9654; 启动 Codex CLI
+              </button>
+            </div>
+          </div>
+
+          <!-- Guide links -->
+          <div class="guide-section">
+            <h3>&#128214; 使用指南（零基础版）</h3>
+            <div class="guide-links">
+              <button class="btn btn-guide" onclick="openGuide('claude-code')">
+                Claude Code 核心用法
+              </button>
+              <button class="btn btn-guide" onclick="openGuide('codex-cli')">
+                Codex CLI 核心用法
+              </button>
+            </div>
+          </div>
+
+          <div class="quick-start">
+            <h3>&#128736; 快速命令</h3>
+            <div class="cmd-block">
+              <code>claude</code>
+              <span class="cmd-desc">启动 Claude Code</span>
+            </div>
+            <div class="cmd-block">
+              <code>codex</code>
+              <span class="cmd-desc">启动 Codex CLI</span>
+            </div>
+            <div class="cmd-block">
+              <code>ccswitch</code>
+              <span class="cmd-desc">切换 AI 提供商</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 24px;">
+          <button class="btn btn-primary" onclick="restartInstall()">再来一次</button>
+          <button class="btn btn-success" onclick="goToManage()">开始使用</button>
+          <button class="btn btn-secondary" onclick="closeApp()">关闭</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 禁用所有输入框的右键菜单
+    document.addEventListener('contextmenu', (e) => {
+      if (e.target.matches('input, textarea')) {
+        e.preventDefault();
+      }
+    });
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
